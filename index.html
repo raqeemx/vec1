@@ -3,492 +3,516 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نموذج تقييم مركبة مستردّة - محسّن | Enhanced Vehicle Evaluation</title>
+    <title>نموذج تقييم مركبة مستردّة | Repossessed Vehicle Evaluation Form</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="css/style-enhanced.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'cairo': ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <!-- Dark Mode Toggle Button (Fixed Position) -->
-    <button id="darkModeToggle" class="dark-mode-toggle no-print" title="تبديل الوضع الليلي">
-        <i class="fas fa-moon"></i>
-    </button>
-
-    <!-- Auto-save Status -->
-    <div id="autoSaveStatus" class="auto-save-status no-print"></div>
-
-    <!-- Notification Container -->
-    <div id="notificationContainer" class="notification-container no-print"></div>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>جاري المعالجة... | Processing...</p>
+<body class="font-cairo bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Top Bar -->
+    <div class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleVehicleList()" class="btn-icon" title="قائمة المركبات">
+                    <i class="fas fa-list"></i>
+                </button>
+                <span class="text-sm text-gray-600 dark:text-gray-300" id="vehicleCount">0 مركبة محفوظة</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="saveStatus" class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <i class="fas fa-circle text-green-500 text-[8px]"></i>
+                    <span>محفوظ</span>
+                </div>
+                <button onclick="toggleDarkMode()" class="btn-icon" title="تبديل الوضع">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="container">
-        <!-- Header -->
-        <header class="form-header">
-            <div class="logo-placeholder">
-                <i class="fas fa-car"></i>
+    <!-- Vehicle List Sidebar -->
+    <div id="vehicleListPanel" class="fixed top-0 right-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl transform translate-x-full transition-transform duration-300 z-50 overflow-hidden">
+        <div class="h-full flex flex-col">
+            <div class="p-4 bg-primary-600 dark:bg-gray-700 text-white flex items-center justify-between">
+                <h3 class="font-bold text-lg"><i class="fas fa-car-side ml-2"></i>المركبات المحفوظة</h3>
+                <button onclick="toggleVehicleList()" class="text-white hover:bg-white/20 rounded p-2">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="header-titles">
-                <h1>نموذج تقييم مركبة مستردّة - محسّن</h1>
-                <h2>Enhanced Repossessed Vehicle Evaluation Form</h2>
-            </div>
-            <div class="form-number">
-                <span>رقم النموذج | Form #:</span>
-                <input type="text" id="formNumber" readonly>
-            </div>
-        </header>
-
-        <!-- Form Content -->
-        <form id="vehicleEvaluationForm">
-            <!-- Section 1: Basic Information -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">1</span>
-                    <h3>البيانات الأساسية <span class="en-title">Basic Information</span></h3>
+            <div class="p-3 border-b dark:border-gray-700">
+                <div class="flex gap-2">
+                    <button onclick="exportAllToExcel()" class="flex-1 btn-sm btn-excel">
+                        <i class="fas fa-file-excel ml-1"></i>تصدير الكل
+                    </button>
+                    <button onclick="newVehicle()" class="flex-1 btn-sm btn-primary">
+                        <i class="fas fa-plus ml-1"></i>جديد
+                    </button>
                 </div>
-                <div class="section-content">
-                    <div class="info-grid">
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>رقم العقد | Contract No. <span class="required">*</span></label>
-                                <input type="text" name="contractNo" id="contractNo" data-required="true">
+            </div>
+            <div id="vehicleListContainer" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- Vehicle items will be added here -->
+            </div>
+        </div>
+    </div>
+    <div id="vehicleListOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleVehicleList()"></div>
+
+    <!-- Main Container -->
+    <div class="container max-w-4xl mx-auto pt-20 pb-10 px-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden" id="formContainer">
+            <!-- Header -->
+            <header class="form-header bg-gradient-to-l from-primary-600 to-primary-700 dark:from-gray-700 dark:to-gray-800 text-white p-6">
+                <div class="flex items-center gap-4 flex-wrap">
+                    <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-car text-3xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h1 class="text-xl md:text-2xl font-bold">نموذج تقييم مركبة مستردّة</h1>
+                        <h2 class="text-sm opacity-90">Repossessed Vehicle Evaluation Form</h2>
+                    </div>
+                    <div class="bg-white/10 rounded-lg px-4 py-2">
+                        <span class="text-sm">رقم النموذج:</span>
+                        <input type="text" id="formNumber" class="bg-white/90 text-gray-800 rounded px-2 py-1 text-center w-32 mr-2" readonly>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Form Content -->
+            <form id="vehicleEvaluationForm" class="p-0">
+                <!-- Section 1: Basic Information -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">1</span>
+                        <h3>البيانات الأساسية <span class="en-title">Basic Information</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="required">رقم العقد / Contract No.</label>
+                                <input type="text" name="contractNo" id="contractNo" class="form-input" required>
                                 <span class="error-message"></span>
                             </div>
-                            <div class="info-item">
-                                <label>رقم الهيكل (VIN) <span class="required">*</span></label>
-                                <input type="text" name="vin" id="vin" maxlength="17" data-required="true">
+                            <div class="form-group">
+                                <label class="required">رقم الهيكل (VIN)</label>
+                                <input type="text" name="vin" id="vin" class="form-input" maxlength="17" required>
                                 <span class="error-message"></span>
                             </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>اسم العميل | Customer Name <span class="required">*</span></label>
-                                <input type="text" name="customerName" id="customerName" data-required="true">
+                            <div class="form-group">
+                                <label class="required">اسم العميل / Customer Name</label>
+                                <input type="text" name="customerName" id="customerName" class="form-input" required>
                                 <span class="error-message"></span>
                             </div>
-                            <div class="info-item">
-                                <label>قراءة العداد | Odometer (km)</label>
-                                <input type="number" name="odometer" id="odometer">
+                            <div class="form-group">
+                                <label>قراءة العداد / Odometer</label>
+                                <input type="number" name="odometer" id="odometer" class="form-input" placeholder="كم">
                             </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>نوع المركبة | Make <span class="required">*</span></label>
-                                <input type="text" name="make" id="make" data-required="true">
+                            <div class="form-group">
+                                <label class="required">نوع المركبة / Make</label>
+                                <input type="text" name="make" id="make" class="form-input" required>
                                 <span class="error-message"></span>
                             </div>
-                            <div class="info-item">
-                                <label>لون المركبة | Color</label>
-                                <input type="text" name="color" id="color">
+                            <div class="form-group">
+                                <label>لون المركبة / Color</label>
+                                <input type="text" name="color" id="color" class="form-input">
                             </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>الموديل | Model <span class="required">*</span></label>
-                                <input type="text" name="model" id="model" data-required="true">
+                            <div class="form-group">
+                                <label class="required">الموديل / Model</label>
+                                <input type="text" name="model" id="model" class="form-input" required>
                                 <span class="error-message"></span>
                             </div>
-                            <div class="info-item">
-                                <label>تاريخ الاسترداد | Repo Date</label>
-                                <input type="date" name="repoDate" id="repoDate">
+                            <div class="form-group">
+                                <label>تاريخ الاسترداد / Repo Date</label>
+                                <input type="date" name="repoDate" id="repoDate" class="form-input">
                             </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>سنة الصنع | Year <span class="required">*</span></label>
-                                <input type="number" name="year" id="year" min="1990" max="2030" data-required="true">
+                            <div class="form-group">
+                                <label class="required">سنة الصنع / Year</label>
+                                <input type="number" name="year" id="year" class="form-input" min="1990" max="2030" required>
                                 <span class="error-message"></span>
                             </div>
-                            <div class="info-item">
-                                <label>موقع الاسترداد | Repo Location</label>
-                                <input type="text" name="repoLocation" id="repoLocation">
+                            <div class="form-group">
+                                <label>موقع الاسترداد / Repo Location</label>
+                                <input type="text" name="repoLocation" id="repoLocation" class="form-input">
                             </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-item">
-                                <label>رقم اللوحة | Plate No.</label>
-                                <input type="text" name="plateNo" id="plateNo">
+                            <div class="form-group">
+                                <label>رقم اللوحة / Plate No.</label>
+                                <input type="text" name="plateNo" id="plateNo" class="form-input">
                             </div>
-                            <div class="info-item">
-                                <label>نوع الوقود | Fuel Type</label>
-                                <select name="fuelType" id="fuelType">
-                                    <option value="">اختر... | Select...</option>
-                                    <option value="petrol">بنزين | Petrol</option>
-                                    <option value="diesel">ديزل | Diesel</option>
-                                    <option value="hybrid">هجين | Hybrid</option>
-                                    <option value="electric">كهربائي | Electric</option>
+                            <div class="form-group">
+                                <label>نوع الوقود / Fuel Type</label>
+                                <select name="fuelType" id="fuelType" class="form-input">
+                                    <option value="">اختر...</option>
+                                    <option value="petrol">بنزين / Petrol</option>
+                                    <option value="diesel">ديزل / Diesel</option>
+                                    <option value="hybrid">هجين / Hybrid</option>
+                                    <option value="electric">كهربائي / Electric</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Section 2: Technical Evaluation -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">2</span>
-                    <h3>تقييم الحالة الفنية <span class="en-title">Technical Condition Evaluation</span></h3>
-                </div>
-                <div class="section-content">
-                    <table class="evaluation-table">
-                        <thead>
-                            <tr>
-                                <th class="item-col">البند | Item</th>
-                                <th class="rating-col">ممتاز<br><span class="en-text">Excellent</span></th>
-                                <th class="rating-col">جيد<br><span class="en-text">Good</span></th>
-                                <th class="rating-col">ضعيف<br><span class="en-text">Poor</span></th>
-                                <th class="notes-col">ملاحظات | Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="item-name">الهيكل الخارجي | Body</td>
-                                <td class="rating-cell"><input type="radio" name="body" value="excellent"></td>
-                                <td class="rating-cell"><input type="radio" name="body" value="good"></td>
-                                <td class="rating-cell"><input type="radio" name="body" value="poor"></td>
-                                <td class="notes-cell"><input type="text" name="bodyNotes"></td>
-                            </tr>
-                            <tr>
-                                <td class="item-name">الإطارات | Tires</td>
-                                <td class="rating-cell"><input type="radio" name="tires" value="excellent"></td>
-                                <td class="rating-cell"><input type="radio" name="tires" value="good"></td>
-                                <td class="rating-cell"><input type="radio" name="tires" value="poor"></td>
-                                <td class="notes-cell"><input type="text" name="tiresNotes"></td>
-                            </tr>
-                            <tr>
-                                <td class="item-name">الإضاءة | Lights</td>
-                                <td class="rating-cell"><input type="radio" name="lights" value="excellent"></td>
-                                <td class="rating-cell"><input type="radio" name="lights" value="good"></td>
-                                <td class="rating-cell"><input type="radio" name="lights" value="poor"></td>
-                                <td class="notes-cell"><input type="text" name="lightsNotes"></td>
-                            </tr>
-                            <tr>
-                                <td class="item-name">المقاعد والتنجيد | Seats</td>
-                                <td class="rating-cell"><input type="radio" name="seats" value="excellent"></td>
-                                <td class="rating-cell"><input type="radio" name="seats" value="good"></td>
-                                <td class="rating-cell"><input type="radio" name="seats" value="poor"></td>
-                                <td class="notes-cell"><input type="text" name="seatsNotes"></td>
-                            </tr>
-                            <tr>
-                                <td class="item-name">الزجاج | Glass</td>
-                                <td class="rating-cell"><input type="radio" name="glass" value="excellent"></td>
-                                <td class="rating-cell"><input type="radio" name="glass" value="good"></td>
-                                <td class="rating-cell"><input type="radio" name="glass" value="poor"></td>
-                                <td class="notes-cell"><input type="text" name="glassNotes"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                <!-- Section 2: Technical Evaluation -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">2</span>
+                        <h3>تقييم الحالة الفنية <span class="en-title">Technical Condition</span></h3>
+                    </div>
+                    <div class="section-content overflow-x-auto">
+                        <table class="evaluation-table w-full">
+                            <thead>
+                                <tr>
+                                    <th class="text-right">البند / Item</th>
+                                    <th class="text-center w-20">ممتاز</th>
+                                    <th class="text-center w-20">جيد</th>
+                                    <th class="text-center w-20">ضعيف</th>
+                                    <th class="text-right">ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="font-medium">الهيكل الخارجي / Body</td>
+                                    <td class="text-center"><input type="radio" name="body" value="excellent" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="body" value="good" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="body" value="poor" class="radio-input"></td>
+                                    <td><input type="text" name="bodyNotes" class="form-input-sm"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-medium">الإطارات / Tires</td>
+                                    <td class="text-center"><input type="radio" name="tires" value="excellent" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="tires" value="good" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="tires" value="poor" class="radio-input"></td>
+                                    <td><input type="text" name="tiresNotes" class="form-input-sm"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-medium">الإضاءة / Lights</td>
+                                    <td class="text-center"><input type="radio" name="lights" value="excellent" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="lights" value="good" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="lights" value="poor" class="radio-input"></td>
+                                    <td><input type="text" name="lightsNotes" class="form-input-sm"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-medium">المقاعد والتنجيد / Seats</td>
+                                    <td class="text-center"><input type="radio" name="seats" value="excellent" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="seats" value="good" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="seats" value="poor" class="radio-input"></td>
+                                    <td><input type="text" name="seatsNotes" class="form-input-sm"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-medium">الزجاج / Glass</td>
+                                    <td class="text-center"><input type="radio" name="glass" value="excellent" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="glass" value="good" class="radio-input"></td>
+                                    <td class="text-center"><input type="radio" name="glass" value="poor" class="radio-input"></td>
+                                    <td><input type="text" name="glassNotes" class="form-input-sm"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
 
-            <!-- Section 3: Damage Assessment -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">3</span>
-                    <h3>تقييم الأضرار <span class="en-title">Damage Assessment</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="damage-grid">
-                        <div class="damage-item">
-                            <label>
+                <!-- Section 3: Damage Assessment -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">3</span>
+                        <h3>تقييم الأضرار <span class="en-title">Damage Assessment</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="scratches">
-                                <span>خدوش | Scratches</span>
+                                <span><i class="fas fa-scratch"></i> خدوش / Scratches</span>
                             </label>
-                        </div>
-                        <div class="damage-item">
-                            <label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="dents">
-                                <span>انبعاجات | Dents</span>
+                                <span><i class="fas fa-car-crash"></i> انبعاجات / Dents</span>
                             </label>
-                        </div>
-                        <div class="damage-item">
-                            <label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="rust">
-                                <span>صدأ | Rust</span>
+                                <span><i class="fas fa-rust"></i> صدأ / Rust</span>
                             </label>
-                        </div>
-                        <div class="damage-item">
-                            <label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="cracked_glass">
-                                <span>زجاج متصدع | Cracked Glass</span>
+                                <span><i class="fas fa-window-restore"></i> زجاج متصدع</span>
                             </label>
-                        </div>
-                        <div class="damage-item">
-                            <label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="missing_parts">
-                                <span>أجزاء مفقودة | Missing Parts</span>
+                                <span><i class="fas fa-puzzle-piece"></i> أجزاء مفقودة</span>
                             </label>
-                        </div>
-                        <div class="damage-item">
-                            <label>
+                            <label class="checkbox-card">
                                 <input type="checkbox" name="damages" value="accident_damage">
-                                <span>أضرار حادث | Accident Damage</span>
+                                <span><i class="fas fa-car-burst"></i> أضرار حادث</span>
                             </label>
                         </div>
+                        <div class="form-group">
+                            <label>تفاصيل الأضرار / Damage Details</label>
+                            <textarea name="damageDetails" id="damageDetails" rows="3" class="form-input" placeholder="اذكر تفاصيل الأضرار..."></textarea>
+                        </div>
                     </div>
-                    <div class="damage-details">
-                        <label>تفاصيل الأضرار | Damage Details:</label>
-                        <textarea name="damageDetails" id="damageDetails" rows="4" placeholder="اذكر تفاصيل الأضرار الموجودة..."></textarea>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Section 4: Accessories -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">4</span>
-                    <h3>الملحقات والمعدات <span class="en-title">Accessories & Equipment</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="accessories-grid">
-                        <div class="accessory-item">
-                            <label>
+                <!-- Section 4: Accessories -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">4</span>
+                        <h3>الملحقات والمعدات <span class="en-title">Accessories</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="spare_tire">
-                                <span>إطار احتياطي | Spare Tire</span>
+                                <span><i class="fas fa-circle"></i> إطار احتياطي</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="jack">
-                                <span>رافعة | Jack</span>
+                                <span><i class="fas fa-tools"></i> رافعة</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="tools">
-                                <span>عدة أدوات | Tool Kit</span>
+                                <span><i class="fas fa-wrench"></i> عدة أدوات</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="first_aid">
-                                <span>حقيبة إسعاف | First Aid</span>
+                                <span><i class="fas fa-first-aid"></i> حقيبة إسعاف</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="fire_extinguisher">
-                                <span>طفاية حريق | Fire Ext.</span>
+                                <span><i class="fas fa-fire-extinguisher"></i> طفاية حريق</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="manual">
-                                <span>دليل المستخدم | Manual</span>
+                                <span><i class="fas fa-book"></i> دليل المستخدم</span>
                             </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
-                                <input type="checkbox" name="accessories" value="keys">
-                                <span>المفاتيح | Keys</span>
-                            </label>
-                        </div>
-                        <div class="accessory-item">
-                            <label>
+                            <label class="checkbox-card success">
                                 <input type="checkbox" name="accessories" value="registration">
-                                <span>استمارة | Registration</span>
+                                <span><i class="fas fa-file-alt"></i> استمارة السيارة</span>
                             </label>
-                        </div>
-                    </div>
-                    <div class="keys-count-container" id="keysCountContainer" style="display: none;">
-                        <label>عدد المفاتيح | Number of Keys:</label>
-                        <input type="number" name="keysCount" id="keysCount" min="0" max="10" placeholder="0">
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 5: Financial Valuation -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">5</span>
-                    <h3>التقييم المالي <span class="en-title">Financial Valuation</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="valuation-single">
-                        <div class="valuation-item">
-                            <label>القيمة السوقية التقديرية | Estimated Market Value</label>
-                            <div class="currency-input">
-                                <input type="number" name="marketValue" id="marketValue" min="0" step="100">
-                                <span class="currency">ر.س | SAR</span>
+                            <div class="flex items-center gap-2">
+                                <label class="checkbox-card success flex-1">
+                                    <input type="checkbox" name="accessories" value="keys">
+                                    <span><i class="fas fa-key"></i> المفاتيح</span>
+                                </label>
+                                <input type="number" name="keysCount" id="keysCount" class="form-input w-16 text-center" placeholder="0" min="0" max="10">
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Section 6: Overall Assessment -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">6</span>
-                    <h3>التقييم العام <span class="en-title">Overall Assessment</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="overall-rating">
-                        <label>التقييم الإجمالي | Overall Rating:</label>
-                        <div class="rating-options">
-                            <label class="rating-option excellent">
-                                <input type="radio" name="overallRating" value="excellent">
-                                <span><i class="fas fa-star"></i> ممتاز | Excellent</span>
-                            </label>
-                            <label class="rating-option good">
-                                <input type="radio" name="overallRating" value="good">
-                                <span><i class="fas fa-star-half-alt"></i> جيد | Good</span>
-                            </label>
-                            <label class="rating-option fair">
-                                <input type="radio" name="overallRating" value="fair">
-                                <span><i class="fas fa-star"></i> مقبول | Fair</span>
-                            </label>
-                            <label class="rating-option poor">
-                                <input type="radio" name="overallRating" value="poor">
-                                <span><i class="fas fa-times-circle"></i> ضعيف | Poor</span>
-                            </label>
-                        </div>
+                <!-- Section 5: Financial Valuation -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">5</span>
+                        <h3>التقييم المالي <span class="en-title">Financial Valuation</span></h3>
                     </div>
-                    <div class="recommendation">
-                        <label>التوصية | Recommendation:</label>
-                        <div class="recommendation-options">
-                            <label>
-                                <input type="radio" name="recommendation" value="sell_as_is">
-                                <span>البيع كما هي | Sell As-Is</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="recommendation" value="repair_sell">
-                                <span>الإصلاح ثم البيع | Repair & Sell</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="recommendation" value="auction">
-                                <span>البيع في المزاد | Auction</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="recommendation" value="scrap">
-                                <span>التخريد | Scrap</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="additional-notes">
-                        <label>ملاحظات إضافية | Additional Notes:</label>
-                        <textarea name="additionalNotes" id="additionalNotes" rows="4"></textarea>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 7: Vehicle Photos -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">7</span>
-                    <h3>صور المركبة <span class="en-title">Vehicle Photos</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="photos-grid">
-                        <div class="photo-box">
-                            <label>الصورة الأولى | Photo 1</label>
-                            <div class="photo-upload" id="photoUpload1" onclick="document.getElementById('photo1').click()">
-                                <input type="file" id="photo1" name="photo1" accept="image/*" onchange="previewImage(this, 'preview1')" hidden>
-                                <div class="photo-preview" id="preview1">
-                                    <i class="fas fa-camera"></i>
-                                    <span>اضغط لإضافة صورة<br><small>Max 5MB</small></span>
+                    <div class="section-content">
+                        <div class="max-w-md mx-auto">
+                            <div class="form-group">
+                                <label>القيمة السوقية التقديرية / Estimated Market Value</label>
+                                <div class="relative">
+                                    <input type="number" name="marketValue" id="marketValue" class="form-input pl-16" min="0" step="100">
+                                    <span class="absolute left-0 top-0 bottom-0 px-4 bg-gray-100 dark:bg-gray-700 border-l dark:border-gray-600 flex items-center text-gray-500 rounded-l-lg">ر.س</span>
                                 </div>
                             </div>
-                            <button type="button" class="btn-remove-photo" onclick="removeImage('photo1', 'preview1')" style="display:none;" id="removeBtn1">
-                                <i class="fas fa-trash"></i> حذف
-                            </button>
                         </div>
-                        <div class="photo-box">
-                            <label>الصورة الثانية | Photo 2</label>
-                            <div class="photo-upload" id="photoUpload2" onclick="document.getElementById('photo2').click()">
-                                <input type="file" id="photo2" name="photo2" accept="image/*" onchange="previewImage(this, 'preview2')" hidden>
-                                <div class="photo-preview" id="preview2">
-                                    <i class="fas fa-camera"></i>
-                                    <span>اضغط لإضافة صورة<br><small>Max 5MB</small></span>
+                    </div>
+                </section>
+
+                <!-- Section 6: Overall Assessment -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">6</span>
+                        <h3>التقييم العام <span class="en-title">Overall Assessment</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="mb-6">
+                            <label class="block font-semibold mb-3">التقييم الإجمالي للمركبة:</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <label class="rating-card excellent">
+                                    <input type="radio" name="overallRating" value="excellent">
+                                    <span><i class="fas fa-star"></i> ممتاز</span>
+                                </label>
+                                <label class="rating-card good">
+                                    <input type="radio" name="overallRating" value="good">
+                                    <span><i class="fas fa-thumbs-up"></i> جيد</span>
+                                </label>
+                                <label class="rating-card fair">
+                                    <input type="radio" name="overallRating" value="fair">
+                                    <span><i class="fas fa-hand"></i> مقبول</span>
+                                </label>
+                                <label class="rating-card poor">
+                                    <input type="radio" name="overallRating" value="poor">
+                                    <span><i class="fas fa-thumbs-down"></i> ضعيف</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block font-semibold mb-3">التوصية / Recommendation:</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <label class="recommendation-card">
+                                    <input type="radio" name="recommendation" value="sell_as_is">
+                                    <span>البيع كما هي</span>
+                                </label>
+                                <label class="recommendation-card">
+                                    <input type="radio" name="recommendation" value="repair_sell">
+                                    <span>إصلاح ثم بيع</span>
+                                </label>
+                                <label class="recommendation-card">
+                                    <input type="radio" name="recommendation" value="auction">
+                                    <span>البيع بالمزاد</span>
+                                </label>
+                                <label class="recommendation-card">
+                                    <input type="radio" name="recommendation" value="scrap">
+                                    <span>التخريد</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>ملاحظات إضافية / Additional Notes</label>
+                            <textarea name="additionalNotes" id="additionalNotes" rows="3" class="form-input"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 7: Vehicle Photos -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">7</span>
+                        <h3>صور المركبة <span class="en-title">Vehicle Photos</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="photo-upload-box">
+                                <label class="block font-medium mb-2 text-center">الصورة الأولى</label>
+                                <div class="photo-dropzone" onclick="document.getElementById('photo1').click()" id="dropzone1">
+                                    <input type="file" id="photo1" name="photo1" accept="image/*" onchange="handlePhotoUpload(this, 1)" hidden>
+                                    <div class="photo-preview" id="preview1">
+                                        <i class="fas fa-camera text-4xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                                        <span class="text-sm text-gray-500">اضغط أو اسحب صورة</span>
+                                        <span class="text-xs text-gray-400 mt-1">الحد الأقصى: 5MB</span>
+                                    </div>
                                 </div>
+                                <button type="button" class="btn-remove-photo hidden" id="removeBtn1" onclick="removePhoto(1)">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
                             </div>
-                            <button type="button" class="btn-remove-photo" onclick="removeImage('photo2', 'preview2')" style="display:none;" id="removeBtn2">
-                                <i class="fas fa-trash"></i> حذف
-                            </button>
-                        </div>
-                        <div class="photo-box">
-                            <label>الصورة الثالثة | Photo 3</label>
-                            <div class="photo-upload" id="photoUpload3" onclick="document.getElementById('photo3').click()">
-                                <input type="file" id="photo3" name="photo3" accept="image/*" onchange="previewImage(this, 'preview3')" hidden>
-                                <div class="photo-preview" id="preview3">
-                                    <i class="fas fa-camera"></i>
-                                    <span>اضغط لإضافة صورة<br><small>Max 5MB</small></span>
+                            <div class="photo-upload-box">
+                                <label class="block font-medium mb-2 text-center">الصورة الثانية</label>
+                                <div class="photo-dropzone" onclick="document.getElementById('photo2').click()" id="dropzone2">
+                                    <input type="file" id="photo2" name="photo2" accept="image/*" onchange="handlePhotoUpload(this, 2)" hidden>
+                                    <div class="photo-preview" id="preview2">
+                                        <i class="fas fa-camera text-4xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                                        <span class="text-sm text-gray-500">اضغط أو اسحب صورة</span>
+                                        <span class="text-xs text-gray-400 mt-1">الحد الأقصى: 5MB</span>
+                                    </div>
                                 </div>
+                                <button type="button" class="btn-remove-photo hidden" id="removeBtn2" onclick="removePhoto(2)">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
                             </div>
-                            <button type="button" class="btn-remove-photo" onclick="removeImage('photo3', 'preview3')" style="display:none;" id="removeBtn3">
-                                <i class="fas fa-trash"></i> حذف
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 8: Signature -->
-            <section class="form-section">
-                <div class="section-header">
-                    <span class="section-number">8</span>
-                    <h3>التوقيع <span class="en-title">Signature</span></h3>
-                </div>
-                <div class="section-content">
-                    <div class="signatures-single">
-                        <div class="signature-box">
-                            <label>المقيّم | Evaluator</label>
-                            <input type="text" name="evaluatorName" placeholder="الاسم | Name">
-                            <input type="text" name="evaluatorId" placeholder="رقم الموظف | Employee ID">
-                            <div class="signature-line">
-                                <span>التوقيع | Signature</span>
+                            <div class="photo-upload-box">
+                                <label class="block font-medium mb-2 text-center">الصورة الثالثة</label>
+                                <div class="photo-dropzone" onclick="document.getElementById('photo3').click()" id="dropzone3">
+                                    <input type="file" id="photo3" name="photo3" accept="image/*" onchange="handlePhotoUpload(this, 3)" hidden>
+                                    <div class="photo-preview" id="preview3">
+                                        <i class="fas fa-camera text-4xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                                        <span class="text-sm text-gray-500">اضغط أو اسحب صورة</span>
+                                        <span class="text-xs text-gray-400 mt-1">الحد الأقصى: 5MB</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-remove-photo hidden" id="removeBtn3" onclick="removePhoto(3)">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div class="date-stamp">
-                        <label>تاريخ التقييم | Evaluation Date:</label>
-                        <input type="date" name="evaluationDate" id="evaluationDate">
+                </section>
+
+                <!-- Section 8: Signature -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <span class="section-number">8</span>
+                        <h3>التوقيع <span class="en-title">Signature</span></h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="max-w-sm mx-auto text-center">
+                            <div class="form-group">
+                                <label>اسم المقيّم / Evaluator Name</label>
+                                <input type="text" name="evaluatorName" class="form-input text-center">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم الموظف / Employee ID</label>
+                                <input type="text" name="evaluatorId" class="form-input text-center">
+                            </div>
+                            <div class="signature-box">
+                                <span class="text-gray-400">التوقيع / Signature</span>
+                            </div>
+                            <div class="form-group mt-4">
+                                <label>تاريخ التقييم / Evaluation Date</label>
+                                <input type="date" name="evaluationDate" id="evaluationDate" class="form-input text-center">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Action Buttons -->
+                <div class="form-actions">
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button type="button" onclick="saveVehicle()" class="btn btn-success">
+                            <i class="fas fa-save"></i>
+                            <span>حفظ المركبة</span>
+                        </button>
+                        <button type="button" onclick="exportToPDF()" class="btn btn-pdf">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>تصدير PDF</span>
+                        </button>
+                        <button type="button" onclick="exportToExcel()" class="btn btn-excel">
+                            <i class="fas fa-file-excel"></i>
+                            <span>تصدير Excel</span>
+                        </button>
+                        <button type="button" onclick="exportToJSON()" class="btn btn-info">
+                            <i class="fas fa-code"></i>
+                            <span>تصدير JSON</span>
+                        </button>
+                        <button type="button" onclick="printForm()" class="btn btn-primary">
+                            <i class="fas fa-print"></i>
+                            <span>طباعة</span>
+                        </button>
+                        <button type="button" onclick="confirmReset()" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i>
+                            <span>مسح</span>
+                        </button>
                     </div>
                 </div>
-            </section>
-
-            <!-- Action Buttons -->
-            <div class="form-actions">
-                <button type="button" class="btn btn-success" onclick="saveForm()">
-                    <i class="fas fa-save"></i> حفظ | Save
-                </button>
-                <button type="button" class="btn btn-primary" onclick="printForm()">
-                    <i class="fas fa-print"></i> طباعة | Print
-                </button>
-                <button type="button" class="btn btn-pdf" onclick="exportToPDF()">
-                    <i class="fas fa-file-pdf"></i> تصدير PDF
-                </button>
-                <button type="button" class="btn btn-excel" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel"></i> تصدير Excel
-                </button>
-                <button type="button" class="btn btn-json" onclick="exportToJSON()">
-                    <i class="fas fa-download"></i> JSON
-                </button>
-                <button type="button" class="btn btn-import" onclick="document.getElementById('importFile').click()">
-                    <i class="fas fa-upload"></i> استيراد | Import
-                </button>
-                <input type="file" id="importFile" accept=".json" onchange="importFromJSON(this)" style="display: none;">
-                <button type="reset" class="btn btn-secondary" onclick="handleReset()">
-                    <i class="fas fa-redo"></i> مسح | Reset
-                </button>
-            </div>
-        </form>
-
-        <!-- Footer -->
-        <footer class="form-footer">
-            <p>© 2024 نموذج تقييم المركبات المستردة | Vehicle Evaluation System</p>
-            <p class="footer-features">Enhanced with Auto-save • Dark Mode • Advanced Export</p>
-        </footer>
+            </form>
+        </div>
     </div>
 
-    <script src="js/main-enhanced.js"></script>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center">
+            <div class="animate-spin w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p id="loadingText" class="text-gray-700 dark:text-gray-300 font-medium">جاري المعالجة...</p>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 space-y-2"></div>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
