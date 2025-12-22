@@ -6,9 +6,9 @@ node_modules/
 .env.local
 .env.*.local
 
-# Firebase configuration with real API keys
-# Uncomment the line below if firebase-config.js contains real API keys
-# js/firebase-config.js
+# ⚠️ CRITICAL: Firebase configuration with real API keys
+# يجب تفعيل هذا السطر لحماية مفاتيح Firebase
+js/firebase-config.js
 
 # IDE
 .idea/
@@ -32,3 +32,10 @@ temp/
 # Build files
 dist/
 build/
+
+# Backup files
+*.backup
+*.bak
+
+# User-specific files
+.user.ini
